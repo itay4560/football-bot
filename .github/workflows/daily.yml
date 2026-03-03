@@ -2,22 +2,25 @@ name: Football Bot Daily
 
 on:
   schedule:
-      - cron: '0 6 * * *'
-        workflow_dispatch:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
-        jobs:
-          run-bot:
-              runs-on: ubuntu-latest
-                  steps:
-                        - uses: actions/checkout@v3
-                              - uses: actions/setup-python@v4
-                                      with:
-                                                python-version: '3.11'
-                                                      - name: Install dependencies
-                                                              run: pip install requests
-                                                                    - name: Run football bot
-                                                                            run: python football_bot.py
-                                                                                    env:
-                                                                                              TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-                                                                                                        FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
-                                                                                                                  CHAT_ID: ${{ secrets.CHAT_ID }}
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run football bot
+        run: python football_bot.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          FOOTBALL_API_KEY: ${{ secrets.FOOTBALL_API_KEY }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
