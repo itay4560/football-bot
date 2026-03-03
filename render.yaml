@@ -1,0 +1,9 @@
+services:
+  - type: worker
+      name: football-bot
+          env: python
+              buildCommand: pip install -r requirements.txt
+                  startCommand: python football_bot.py
+                      envVars:
+                            - key: PYTHON_VERSION
+                                    value: 3.11.0
