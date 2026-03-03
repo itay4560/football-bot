@@ -2,24 +2,22 @@ name: Daily Football Bot
 
 on:
   schedule:
-      - cron: '0 6 * * *'  # כל יום ב-08:00 שעון ישראל (UTC+2)
-        workflow_dispatch:      # אפשרות להרצה ידנית
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
-        jobs:
-          send-matches:
-              runs-on: ubuntu-latest
-                  steps:
-                        - uses: actions/checkout@v3
+jobs:
+  send-matches:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-                              - name: Set up Python
-                                      uses: actions/setup-python@v4
-                                              with:
-                                                        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-                                                              - name: Install dependencies
-                                                                      run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install requests
 
-                                                                            - name: Run football bot
-                                                                                    run: python football_bot.py
-                                                                                            env:
-                                                                                                      PYTHONUNBUFFERED: 1
+      - name: Run bot
+        run: python football_bot.py
