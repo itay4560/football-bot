@@ -1,110 +1,146 @@
 import requests
-import schedule
-import time
+import os
 from datetime import datetime, date
 
-TELEGRAM_TOKEN = "8638543906:AAGlksfwuGK4TKVmmVoxkrovki3MA7BO1Qo"
-CHAT_ID = "651797514"
-FOOTBALL_API_KEY = "7c100e549ff047b1bd17b1838b2fe545"
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+CHAT_ID = os.environ.get("CHAT_ID", "")
+FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
+
 FOOTBALL_API_URL = "https://api.football-data.org/v4"
 HEADERS = {"X-Auth-Token": FOOTBALL_API_KEY}
 
-COMPETITIONS = {"PL": "Premier League","PD": "La Liga","CL": "Champions League","FL1": "Ligue 1","BL1": "Bundesliga","SA": "Serie A"}
+COMPETITIONS = {
+        "PL": "🏴 פרמייר ליג",
+        "PD": "🇪🇸 לה ליגה",
+        "CL": "🏆 ליגת האלופות",
+        "FL1": "🇫🇷 ליג 1",
+        "BL1": "🇩🇪 בונדסליגה",
+        "SA": "🇮🇹 סריה א",
+        "EL": "🟠 ליגה אירופית",
+}
+
 RIVALRIES = [
-    {"teams": ["Manchester City", "Manchester United"], "name": "Manchester Derby"},
-    {"teams": ["Arsenal", "Tottenham Hotspur"], "name": "North London Derby"},
-    {"teams": ["Liverpool", "Manchester United"], "name": "Northwest Derby"},
-    {"teams": ["Liverpool", "Everton"], "name": "Merseyside Derby"},
-    {"teams": ["Real Madrid CF", "FC Barcelona"], "name": "El Clasico"},
-    {"teams": ["Real Madrid CF", "Club Atletico de Madrid"], "name": "Madrid Derby"},
-    {"teams": ["AC Milan", "FC Internazionale Milano"], "name": "Derby della Madonnina"},
-    {"teams": ["AS Roma", "SS Lazio"], "name": "Derby della Capitale"},
+        {"teams": ["Manchester City FC", "Manchester United FC"], "name": "🔴🔵 דרבי מנצ'סטר"},
+        {"teams": ["Arsenal FC", "Tottenham Hotspur FC"], "name": "🔴⚪ דרבי צפון לונדון"},
+        {"teams": ["Arsenal FC", "Chelsea FC"], "name": "🔴🔵 דרבי לונדון"},
+        {"teams": ["Liverpool FC", "Manchester United FC"], "name": "🔴 נורת'ווסט דרבי"},
+        {"teams": ["Liverpool FC", "Everton FC"], "name": "🔵🔴 דרבי מרסיסייד"},
+        {"teams": ["Chelsea FC", "Tottenham Hotspur FC"], "name": "🔵⚪ דרבי לונדון"},
+        {"teams": ["Real Madrid CF", "FC Barcelona"], "name": "👑 אל קלאסיקו 🔥"},
+        {"teams": ["Real Madrid CF", "Atletico de Madrid"], "name": "⚪🔴 דרבי מדריד"},
+        {"teams": ["FC Barcelona", "Atletico de Madrid"], "name": "🔵🔴 דרבי ספרד"},
+        {"teams": ["Juventus FC", "FC Internazionale Milano"], "name": "⚫⚪ דרבי ד'איטליה"},
+        {"teams": ["AS Roma", "SS Lazio"], "name": "🟡🔴 דרבי רומא"},
+        {"teams": ["AC Milan", "FC Internazionale Milano"], "name": "🔴⚫ דרבי מילאנו"},
+        {"teams": ["Borussia Dortmund", "FC Bayern München"], "name": "🟡⚫ קלאסיקר גרמני"},
 ]
-ISRAELI_TEAMS = ["Maccabi Tel Aviv", "Hapoel Tel Aviv", "Maccabi Haifa", "Beitar Jerusalem"]
+
+ISRAELI_TEAMS = ["Maccabi Tel Aviv", "Hapoel Tel Aviv", "Maccabi Haifa", "Beitar Jerusalem", "Hapoel Beer Sheva"]
 
 def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    try:
-        requests.post(url, data={"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}).raise_for_status()
-    except Exception as e:
-        print(f"Error: {e}")
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        data = {"chat_id": CHAT_ID, "text": messagimport requests
+    import os
+from datetime import datetime, date
+
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+CHAT_ID = os.environ.get("CHAT_ID", "")
+FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
+
+FOOTBALL_API_URL = "https://api.football-data.org/v4"
+HEADERS = {"X-Auth-Token": FOOTBALL_API_KEY}
+
+COMPETITIONS = {
+        "PL": "🏴 פרמייר ליג",
+        "PD": "🇪🇸 לה ליגה",
+        "CL": "🏆 ליגת האלופות",
+        "FL1": "🇫🇷 ליג 1",
+        "BL1": "🇩🇪 בונדסליגה",
+        "SA": "🇮🇹 סריה א",
+        "EL": "🟠 ליגה אירופית",
+}
+
+RIVALRIES = [
+        {"teams": ["Manchester City FC", "Manchester United FC"], "name": "🔴🔵 דרבי מנצ'סטר"},
+        {"teams": ["Arsenal FC", "Tottenham Hotspur FC"], "name": "🔴⚪ דרבי צפון לונדון"},
+        {"teams": ["Arsenal FC", "Chelsea FC"], "name": "🔴🔵 דרבי לונדון"},
+        {"teams": ["Liverpool FC", "Manchester United FC"], "name": "🔴 נורת'ווסט דרבי"},
+        {"teams": ["Liverpool FC", "Everton FC"], "name": "🔵🔴 דרבי מרסיסייד"},
+        {"teams": ["Chelsea FC", "Tottenham Hotspur FC"], "name": "🔵⚪ דרבי לונדון"},
+        {"teams": ["Real Madrid CF", "FC Barcelona"], "name": "👑 אל קלאסיקו 🔥"},
+        {"teams": ["Real Madrid CF", "Atletico de Madrid"], "name": "⚪🔴 דרבי מדריד"},
+        {"teams": ["FC Barcelona", "Atletico de Madrid"], "name": "🔵🔴 דרבי ספרד"},
+        {"teams": ["Juventus FC", "FC Internazionale Milano"], "name": "⚫⚪ דרבי ד'איטליה"},
+        {"teams": ["AS Roma", "SS Lazio"], "name": "🟡🔴 דרבי רומא"},
+        {"teams": ["AC Milan", "FC Internazionale Milano"], "name": "🔴⚫ דרבי מילאנו"},
+        {"teams": ["Borussia Dortmund", "FC Bayern München"], "name": "🟡⚫ קלאסיקר גרמני"},
+]
+
+ISRAELI_TEAMS = ["Maccabi Tel Aviv", "Hapoel Tel Aviv", "Maccabi Haifa", "Beitar Jerusalem", "Hapoel Beer Sheva"]
+
+def send_telegram(message):
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        data = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
+        try:
+                    response = requests.post(url, data=data)
+                    response.raise_for_status()
+                    print("✅ הודעה נשלחה!")
+except Exception as e:
+        print(f"❌ שגיאה: {e}")
 
 def get_matches_today():
-    today = date.today().strftime("%Y-%m-%d")
-    all_matches = []
-    for code, name in COMPETITIONS.items():
-        try:
-            res = requests.get(f"{FOOTBALL_API_URL}/competitions/{code}/matches", headers=HEADERS, params={"dateFrom": today, "dateTo": today})
-            if res.status_code == 200:
-                for m in res.json().get("matches", []):
-                    m["competition_name"] = name
-                    m["competition_code"] = code
-                    all_matches.append(m)
-        except Exception as e:
-            print(f"Error {code}: {e}")
-    return all_matches
+        today = date.today().strftime("%Y-%m-%d")
+        all_matches = []
+        for code, name in COMPETITIONS.items():
+                    try:
+                                    url = f"{FOOTBALL_API_URL}/competitions/{code}/matches"
+                                    params = {"dateFrom": today, "dateTo": today}
+                                    res = requests.get(url, headers=HEADERS, params=params)
+                                    if res.status_code == 200:
+                                                        matches = res.json().get("matches", [])
+                                                        for m in matches:
+                                                                                m["competition_name"] = name
+                                                                                m["competition_code"] = code
+                                                                            all_matches.extend(matches)
+                    except Exception as e:
+                                    print(f"שגיאה בליגה {code}: {e}")
+                            return all_matches
 
 def is_must_watch(match):
-    home = match.get("homeTeam", {}).get("name", "")
-    away = match.get("awayTeam", {}).get("name", "")
-    stage = match.get("stage", "")
-    matchday = match.get("matchday", 0) or 0
-    competition = match.get("competition_code", "")
-    reasons = []
-    if competition == "CL":
-        reasons.append("Champions League Knockout!" if stage in ["LAST_16","QUARTER_FINALS","SEMI_FINALS","FINAL"] else "Champions League")
-    for r in RIVALRIES:
-        if any(t in home for t in r["teams"]) and any(t in away for t in r["teams"]):
-            reasons.append(r["name"])
-            break
-    if any(t in home or t in away for t in ISRAELI_TEAMS):
-        reasons.append("Israeli team!")
-    if stage in ["FINAL", "SEMI_FINALS"]:
-        reasons.append("Final!")
-    if competition in ["PL","PD"] and matchday >= 33:
-        reasons.append("Critical matchday!")
-    return reasons
+        home = match.get("homeTeam", {}).get("name", "")
+        away = match.get("awayTeam", {}).get("name", "")
+        stage = match.get("stage", "")
+        matchday = match.get("matchday", 0) or 0
+        competition = match.get("competition_code", "")
+        reasons = []
+        if competition == "CL":
+                    if stage in ["LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "FINAL"]:
+                                    reasons.append("🏆 נוקאאוט ליגת האלופות!")
+        else:
+                        reasons.append("🏆 ליגת האלופות")
+                for rivalry in RIVALRIES:
+                            teams = rivalry["teams"]
+                            if any(t in home for t in teams) and any(t in away for t in teams):
+                                            reasons.append(rivalry["name"])
+                                            break
+                                    for team in ISRAELI_TEAMS:
+                                                if team in home or team in away:
+                                                                reasons.append("🇮🇱 קבוצה ישראלית!")
+                                                                break
+                                                        if stage in ["FINAL", "SEMI_FINALS"]:
+                                                                    reasons.append("🏅 גמר / חצי גמר!")
+                                                                if competition in ["PL", "PD"] and matchday >= 33:
+                                                                            reasons.append("🔥 מחזור קריטי!")
+                                                                        return reasons
 
 def format_match(match, reasons):
-    home = match.get("homeTeam",{}).get("name","?")
-    away = match.get("awayTeam",{}).get("name","?")
-    comp = match.get("competition_name","")
-    venue = match.get("venue","")
+        home = match.get("homeTeam", {}).get("name", "?")
+    away = match.get("awayTeam", {}).get("name", "?")
+    comp = match.get("competition_name", "")
+    venue = match.get("venue", "")
+    utc_time = match.get("utcDate", "")
     try:
-        dt = datetime.strptime(match.get("utcDate",""), "%Y-%m-%dT%H:%M:%SZ")
-        time_str = f"{(dt.hour+2)%24:02d}:{dt.minute:02d}"
-    except:
-        time_str = "?"
-    lines = [f"", f"<b>{home} vs {away}</b>", f"Time: {time_str} (Israel)", f"League: {comp}"]
-    if venue: lines.append(f"Stadium: {venue}")
-    if reasons: lines.append(f"WHY WATCH: {' | '.join(reasons)}")
-    return "\n".join(lines)
-
-def send_daily_matches():
-    matches = get_matches_today()
-    must_watch = [(m, is_must_watch(m)) for m in matches if is_must_watch(m)]
-    regular = [(m, []) for m in matches if not is_must_watch(m)]
-    today_str = date.today().strftime("%d/%m/%Y")
-    parts = [f"<b>Football Today - {today_str}</b>"]
-    if must_watch:
-        parts.append(f"\n<b>MUST WATCH ({len(must_watch)}):</b>")
-        for match, reasons in must_watch:
-            parts.append(format_match(match, reasons))
-    if regular:
-        parts.append(f"\n<b>Other games ({len(regular)}):</b>")
-        for match, _ in regular[:8]:
-            parts.append(format_match(match, []))
-    if not must_watch and not regular:
-        parts.append("No games today")
-    send_telegram("\n".join(parts))
-
-def main():
-    print("Bot started!")
-    send_daily_matches()
-    schedule.every().day.at("08:00").do(send_daily_matches)
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
-
-if __name__ == "__main__":
-    main()
+                dt = datetime.strptime(utc_time, "%Y-%m-%dT%H:%M:%SZ")
+        hour = (dt.hour + 2) % 24
+        time_str = f"{hour:02d}:{dt.minute:02d}"
+    ex
