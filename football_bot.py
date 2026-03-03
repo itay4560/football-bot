@@ -23,6 +23,8 @@ RIVALRIES = [
     {"teams": ["Arsenal FC", "Tottenham Hotspur FC"], "name": "North London Derby"},
     {"teams": ["Liverpool FC", "Manchester United FC"], "name": "NorthWest Derby"},
     {"teams": ["Liverpool FC", "Everton FC"], "name": "Merseyside Derby"},
+    {"teams": ["Chelsea FC", "Tottenham Hotspur FC"], "name": "London Derby"},
+    {"teams": ["Arsenal FC", "Chelsea FC"], "name": "London Derby"},
     {"teams": ["Real Madrid CF", "FC Barcelona"], "name": "El Clasico"},
     {"teams": ["Real Madrid CF", "Atletico de Madrid"], "name": "Madrid Derby"},
     {"teams": ["AC Milan", "FC Internazionale Milano"], "name": "Derby Milano"},
@@ -30,7 +32,37 @@ RIVALRIES = [
     {"teams": ["Borussia Dortmund", "FC Bayern Munchen"], "name": "Der Klassiker"},
 ]
 
+BIG_TEAMS = [
+    "Liverpool FC", "Arsenal FC", "Manchester City FC", "Manchester United FC",
+    "Chelsea FC", "Tottenham Hotspur FC", "FC Barcelona", "Real Madrid CF",
+    "Atletico de Madrid", "FC Bayern Munchen", "Borussia Dortmund",
+    "Juventus FC", "AC Milan", "FC Internazionale Milano", "Paris Saint-Germain FC",
+]
+
 ISRAELI_TEAMS = ["Maccabi Tel Aviv", "Hapoel Tel Aviv", "Maccabi Haifa", "Beitar Jerusalem", "Hapoel Beer Sheva"]
+
+STADIUM_CITIES = {
+    "Old Trafford": "Manchester",
+    "Etihad Stadium": "Manchester",
+    "Anfield": "Liverpool",
+    "Emirates Stadium": "London",
+    "Stamford Bridge": "London",
+    "Tottenham Hotspur Stadium": "London",
+    "Camp Nou": "Barcelona",
+    "Santiago Bernabeu": "Madrid",
+    "Wanda Metropolitano": "Madrid",
+    "Signal Iduna Park": "Dortmund",
+    "Allianz Arena": "Munich",
+    "San Siro": "Milan",
+    "Juventus Stadium": "Turin",
+    "Parc des Princes": "Paris",
+    "Molineux Stadium": "Wolverhampton",
+    "Goodison Park": "Liverpool",
+    "Vitality Stadium": "Bournemouth",
+    "Brentford Community Stadium": "London",
+    "Elland Road": "Leeds",
+    "Stadium of Light": "Sunderland",
+}
 
 
 def send_telegram(message):
@@ -70,24 +102,35 @@ def is_must_watch(match):
     matchday = match.get("matchday", 0) or 0
     competition = match.get("competition_code", "")
     reasons = []
+
     if competition == "CL":
         if stage in ["LAST_16", "QUARTER_FINALS", "SEMI_FINALS", "FINAL"]:
             reasons.append("Champions League Knockout!")
         else:
             reasons.append("Champions League")
+
     for rivalry in RIVALRIES:
         teams = rivalry["teams"]
         if any(t in home for t in teams) and any(t in away for t in teams):
             reasons.append(rivalry["name"])
             break
+
     for team in ISRAELI_TEAMS:
         if team in home or team in away:
             reasons.append("Israeli team!")
             break
+
     if stage in ["FINAL", "SEMI_FINALS"]:
         reasons.append("Final / Semi Final!")
+
     if competition in ["PL", "PD"] and matchday >= 33:
         reasons.append("Critical matchday!")
+
+    home_big = any(t in home for t in BIG_TEAMS)
+    away_big = any(t in away for t in BIG_TEAMS)
+    if (home_big or away_big) and competition in ["PL", "PD", "CL", "BL1", "SA"]:
+        reasons.append("Big team match!")
+
     return reasons
 
 
@@ -97,15 +140,23 @@ def format_match(match, reasons):
     comp = match.get("competition_name", "")
     venue = match.get("venue", "")
     utc_time = match.get("utcDate", "")
+
     try:
         dt = datetime.strptime(utc_time, "%Y-%m-%dT%H:%M:%SZ")
         hour = (dt.hour + 2) % 24
         time_str = f"{hour:02d}:{dt.minute:02d}"
     except Exception:
         time_str = "?"
-    lines = [f"", f"<b>{home} vs {away}</b>", f"Time: {time_str}", f"League: {comp}"]
+
+    city = STADIUM_CITIES.get(venue, "")
+
+    lines = ["", f"<b>{home} vs {away}</b>", f"Time: {time_str} (Israel)"]
     if venue:
-        lines.append(f"Stadium: {venue}")
+        if city:
+            lines.append(f"Stadium: {venue}, {city}")
+        else:
+            lines.append(f"Stadium: {venue}")
+    lines.append(f"League: {comp}")
     if reasons:
         lines.append(f"Why watch: {' | '.join(reasons)}")
     return "\n".join(lines)
@@ -116,26 +167,32 @@ def send_daily_matches():
     matches = get_matches_today()
     must_watch = []
     regular = []
+
     for match in matches:
         reasons = is_must_watch(match)
         if reasons:
             must_watch.append((match, reasons))
         else:
             regular.append((match, []))
+
     today_str = date.today().strftime("%d/%m/%Y")
     message_parts = [f"<b>Football Today - {today_str}</b>"]
+
     if must_watch:
         message_parts.append(f"\nMust Watch ({len(must_watch)} games):")
         message_parts.append("---------------")
         for match, reasons in must_watch:
             message_parts.append(format_match(match, reasons))
+
     if regular:
         message_parts.append(f"\nOther games ({len(regular)}):")
         message_parts.append("---------------")
         for match, _ in regular[:8]:
             message_parts.append(format_match(match, []))
+
     if not must_watch and not regular:
         message_parts.append("\nNo interesting matches today")
+
     send_telegram("\n".join(message_parts))
 
 
