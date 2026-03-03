@@ -42,7 +42,6 @@ STADIUM_CITIES = {
     "Elland Road": "לידס",
     "London Stadium": "לונדון",
     "Villa Park": "בירמינגהם",
-    "St. James Park": "ניוקאסל",
 }
 
 
@@ -81,12 +80,18 @@ def format_time(utc_time):
         dt = datetime.strptime(utc_time, "%Y-%m-%dT%H:%M:%SZ")
         hour = (dt.hour + 2) % 24
         return f"{hour:02d}:{dt.minute:02d}"
-    except:
+    except Exception:
         return "?"
 
 
 def analyze_with_claude(matches):
     if not matches:
+        return []
+
+    print(f"שולח {len(matches)} משחקים ל-Claude לניתוח...")
+
+    if not ANTHROPIC_API_KEY:
+        print("שגיאה: ANTHROPIC_API_KEY לא מוגדר!")
         return []
 
     matches_list = []
@@ -116,13 +121,14 @@ def analyze_with_claude(matches):
 ]
 
 חוקים:
-- score 8-10 = חייב לראות (דרבים, נוקאאוט, משחקים מכריעים)
-- score 5-7 = מעניין (קבוצות גדולות, מחזורים חשובים)
+- score 8-10 = חייב לראות (דרבים, נוקאאוט, משחקים מכריעים, קבוצות גדולות)
+- score 5-7 = מעניין
 - score 1-4 = רגיל
 - must_watch = true רק ל-score 7 ומעלה
-- החזר JSON בלבד, ללא טקסט נוסף"""
+- החזר JSON בלבד ללא שום טקסט נוסף"""
 
     try:
+        print("קורא ל-Claude API...")
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={
@@ -134,17 +140,23 @@ def analyze_with_claude(matches):
                 "model": "claude-haiku-4-5-20251001",
                 "max_tokens": 2000,
                 "messages": [{"role": "user", "content": prompt}]
-            }
+            },
+            timeout=30
         )
+        print(f"סטטוס תגובה: {response.status_code}")
         response.raise_for_status()
-        text = response.json()["content"][0]["text"]
-        text = text.strip()
+        text = response.json()["content"][0]["text"].strip()
+        print(f"תגובה מ-Claude: {text[:200]}")
         if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("\n", 1)[0]
+            text = "\n".join(text.split("\n")[1:-1])
         analysis = json.loads(text)
+        print(f"Claude ניתח {len(analysis)} משחקים בהצלחה!")
         return analysis
+    except requests.exceptions.HTTPError as e:
+        print(f"שגיאת HTTP מ-Claude: {e} | תגובה: {e.response.text}")
+        return []
     except Exception as e:
-        print(f"שגיאה ב-Claude: {e}")
+        print(f"שגיאה ב-Claude: {type(e).__name__}: {e}")
         return []
 
 
@@ -170,10 +182,7 @@ def send_daily_matches():
     print(f"נמצאו {len(matches)} משחקים")
 
     analysis = analyze_with_claude(matches)
-
-    analysis_map = {}
-    for item in analysis:
-        analysis_map[item["index"]] = item
+    analysis_map = {item["index"]: item for item in analysis}
 
     must_watch = []
     interesting = []
