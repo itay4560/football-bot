@@ -154,6 +154,7 @@ No text outside the JSON array."""
             if block.get("type") == "text":
                 text += block.get("text", "")
 
+        print(f"Claude raw response:\n{text}")
         text = text.strip()
         if "```" in text:
             start = text.find("[")
