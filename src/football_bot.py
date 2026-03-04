@@ -1,12 +1,40 @@
 import requests
 import os
 import json
+import time
 from collections import defaultdict
-from datetime import datetime, date
+from datetime import date, datetime
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID = os.environ.get("CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY", "")
+
+LEAGUES = [
+    {"id": 2,   "country": "אירופה",       "flag": "🌍"},   # Champions League
+    {"id": 39,  "country": "אנגליה",       "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},  # Premier League
+    {"id": 45,  "country": "אנגליה",       "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},  # FA Cup
+    {"id": 61,  "country": "צרפת",         "flag": "🇫🇷"},  # Ligue 1
+    {"id": 71,  "country": "ברזיל",        "flag": "🇧🇷"},  # Brazilian Serie A
+    {"id": 78,  "country": "גרמניה",       "flag": "🇩🇪"},  # Bundesliga
+    {"id": 88,  "country": "הולנד",        "flag": "🇳🇱"},  # Eredivisie
+    {"id": 13,  "country": "דרום אמריקה",  "flag": "🌎"},   # Copa Libertadores
+    {"id": 128, "country": "ארגנטינה",     "flag": "🇦🇷"},  # Argentine Primera
+    {"id": 135, "country": "איטליה",       "flag": "🇮🇹"},  # Serie A
+    {"id": 137, "country": "איטליה",       "flag": "🇮🇹"},  # Coppa Italia
+    {"id": 140, "country": "ספרד",         "flag": "🇪🇸"},  # La Liga
+    {"id": 143, "country": "ספרד",         "flag": "🇪🇸"},  # Copa del Rey
+    {"id": 203, "country": "טורקיה",       "flag": "🇹🇷"},  # Turkish Super Lig
+]
+
+SOUTH_AMERICAN_LEAGUES = {13, 71, 128}
+
+
+def get_season(league_id):
+    today = date.today()
+    if league_id in SOUTH_AMERICAN_LEAGUES:
+        return today.year
+    return today.year if today.month >= 7 else today.year - 1
 
 
 def send_telegram(message):
@@ -20,42 +48,86 @@ def send_telegram(message):
         print(f"שגיאה בשליחה: {e}")
 
 
-def get_matches_from_claude():
-    today = date.today().strftime("%d/%m/%Y")
-    today_search = date.today().strftime("%Y-%m-%d")
+def fetch_all_fixtures():
+    today_str = date.today().strftime("%Y-%m-%d")
+    all_fixtures = []
 
-    print(f"שולח בקשה ל-Claude עם web search...")
+    for league in LEAGUES:
+        season = get_season(league["id"])
+        print(f"Fetching league {league['id']} (season {season})...")
+        try:
+            response = requests.get(
+                "https://v3.football.api-sports.io/fixtures",
+                headers={"x-apisports-key": API_FOOTBALL_KEY},
+                params={
+                    "league": league["id"],
+                    "season": season,
+                    "date": today_str,
+                    "timezone": "Asia/Jerusalem",
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            data = response.json()
 
-    prompt = f"""היום הוא {today}.
+            if data.get("errors"):
+                print(f"API error for league {league['id']}: {data['errors']}")
+                continue
 
-חפש ברשת את כל משחקי הכדורגל החשובים שמתקיימים היום {today_search}.
+            for item in data.get("response", []):
+                f = item.get("fixture", {})
+                venue = f.get("venue") or {}
+                teams = item.get("teams", {})
+                lg = item.get("league", {})
 
-לאחר החיפוש, בחר את המשחקים הכי מעניינים ומדוברים - דרבים, ליגת אלופות, גביעים, קבוצות גדולות, משחקים מכריעים.
-החזר לפחות 3 משחקים גם אם אין משחקים חמים במיוחד.
+                try:
+                    time_str = datetime.fromisoformat(f.get("date", "")).strftime("%H:%M")
+                except Exception:
+                    time_str = "?"
 
-החזר JSON בלבד בפורמט הזה:
-[
-  {{
-    "home": "שם קבוצת בית בעברית או אנגלית",
-    "away": "שם קבוצת חוץ בעברית או אנגלית",
-    "time": "HH:MM",
-    "league": "שם הליגה בעברית",
-    "stage": "שלב או מחזור - למשל: מחזור 28, שמינית גמר, גמר",
-    "stadium": "שם האצטדיון",
-    "city": "עיר",
-    "country": "שם המדינה בעברית",
-    "flag": "אמוג'י דגל המדינה",
-    "reason": "משפט קצר בעברית למה כדאי לצפות",
-    "importance": "hot/interesting/regular"
-  }}
-]
+                all_fixtures.append({
+                    "home": teams.get("home", {}).get("name", "?"),
+                    "away": teams.get("away", {}).get("name", "?"),
+                    "time": time_str,
+                    "league": lg.get("name", ""),
+                    "round": lg.get("round", ""),
+                    "stadium": venue.get("name", ""),
+                    "city": venue.get("city", ""),
+                    "country": league["country"],
+                    "flag": league["flag"],
+                })
 
-כללים:
-- hot = דרבים, נוקאאוט CL, משחקים מכריעים לאליפות
-- interesting = קבוצות גדולות, גביעים, משחקים מעניינים
-- regular = שאר המשחקים הראויים לציון
-- השעות בשעון ישראל (UTC+2)
-- החזר JSON בלבד ללא טקסט נוסף"""
+        except Exception as e:
+            print(f"Error fetching league {league['id']}: {e}")
+
+        time.sleep(1)
+
+    print(f"Total fixtures found: {len(all_fixtures)}")
+    return all_fixtures
+
+
+def analyze_with_claude(fixtures):
+    if not fixtures:
+        return []
+
+    slim = [
+        {"home": f["home"], "away": f["away"], "league": f["league"], "round": f["round"]}
+        for f in fixtures
+    ]
+
+    prompt = f"""You are a football expert. Analyze these fixtures and classify each one.
+
+hot = derbies, CL/Europa knockouts, title deciders, top-of-table clashes between big clubs
+interesting = big clubs, cup matches, notable games
+regular = other matches
+
+Fixtures:
+{json.dumps(slim, ensure_ascii=False)}
+
+Return ONLY a JSON array with one object per fixture in the exact same order:
+[{{"importance": "hot/interesting/regular", "reason": "short sentence in Hebrew explaining why to watch"}}]
+
+No text outside the JSON array."""
 
     try:
         response = requests.post(
@@ -67,22 +139,17 @@ def get_matches_from_claude():
             },
             json={
                 "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 4000,
-                "tools": [{"type": "web_search_20250305", "name": "web_search"}],
-                "messages": [{"role": "user", "content": prompt}]
+                "max_tokens": 2000,
+                "messages": [{"role": "user", "content": prompt}],
             },
-            timeout=60
+            timeout=60,
         )
-        print(f"סטטוס: {response.status_code}")
         response.raise_for_status()
 
-        content = response.json()["content"]
         text = ""
-        for block in content:
+        for block in response.json()["content"]:
             if block.get("type") == "text":
                 text += block.get("text", "")
-
-        print(f"תגובה מ-Claude: {text[:300]}")
 
         text = text.strip()
         if "```" in text:
@@ -90,16 +157,25 @@ def get_matches_from_claude():
             end = text.rfind("]") + 1
             text = text[start:end]
 
-        matches = json.loads(text)
-        print(f"Claude מצא {len(matches)} משחקים!")
-        return matches
+        rankings = json.loads(text)
+        print(f"Claude ranked {len(rankings)} matches")
 
-    except requests.exceptions.HTTPError as e:
-        print(f"שגיאת HTTP: {e} | {e.response.text[:200]}")
-        return []
+        for i, fixture in enumerate(fixtures):
+            if i < len(rankings):
+                fixture["importance"] = rankings[i].get("importance", "regular")
+                fixture["reason"] = rankings[i].get("reason", "")
+            else:
+                fixture["importance"] = "regular"
+                fixture["reason"] = ""
+
+        return fixtures
+
     except Exception as e:
-        print(f"שגיאה: {type(e).__name__}: {e}")
-        return []
+        print(f"Claude error: {type(e).__name__}: {e}")
+        for f in fixtures:
+            f.setdefault("importance", "regular")
+            f.setdefault("reason", "")
+        return fixtures
 
 
 def format_match(match):
@@ -107,20 +183,16 @@ def format_match(match):
     away = match.get("away", "?")
     time_str = match.get("time", "?")
     league = match.get("league", "")
-    stage = match.get("stage", "")
+    round_str = match.get("round", "")
     stadium = match.get("stadium", "")
     city = match.get("city", "")
     reason = match.get("reason", "")
     importance = match.get("importance", "regular")
 
     icon = "🔥" if importance == "hot" else "⭐"
-    meta = " | ".join(p for p in [league, stage, time_str] if p)
+    meta = " | ".join(p for p in [league, round_str, time_str] if p)
 
-    lines = [
-        icon,
-        f"{home} ✦ {away}",
-        meta,
-    ]
+    lines = [icon, f"{home} ✦ {away}", meta]
     if stadium or city:
         lines.append(f"📍 {', '.join(p for p in [stadium, city] if p)}")
     if reason:
@@ -130,18 +202,20 @@ def format_match(match):
 
 
 def send_daily_matches():
-    print(f"מחפש משחקים ל-{date.today()}...")
-    matches = get_matches_from_claude()
+    print(f"Starting football bot for {date.today()}...")
+    fixtures = fetch_all_fixtures()
 
-    if not matches:
+    if not fixtures:
         send_telegram("לא נמצאו משחקים מעניינים היום 😴")
         return
 
+    analyzed = analyze_with_claude(fixtures)
+
     order = {"hot": 0, "interesting": 1, "regular": 2}
-    matches.sort(key=lambda m: order.get(m.get("importance", "regular"), 2))
+    analyzed.sort(key=lambda m: order.get(m.get("importance", "regular"), 2))
 
     by_country = defaultdict(list)
-    for m in matches:
+    for m in analyzed:
         key = (m.get("flag", "🌍"), m.get("country", "אחר"))
         by_country[key].append(m)
 
