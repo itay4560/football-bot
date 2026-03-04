@@ -9,8 +9,7 @@ CHAT_ID = os.environ.get("CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 CUP_LEAGUES = {
-    "Champions League", "Europa League", "Conference League",
-    "Copa del Rey", "Copa Libertadores", "FA Cup", "Coppa Italia",
+    "Champions League", "Europa League", "Conference League", "Copa del Rey",
 }
 
 FEEDS = [
