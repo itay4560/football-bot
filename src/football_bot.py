@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID = os.environ.get("CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
+FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "").strip()
 
 COMPETITIONS = "PL,PD,CL,BL1,SA,FL1,DED,PPL,EL,ECL"
 
