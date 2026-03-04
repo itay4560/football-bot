@@ -128,6 +128,8 @@ Fixtures:
 Return ONLY a JSON array with one object per fixture in the exact same order:
 [{{"importance": "hot/interesting/regular", "reason": "short sentence in Hebrew explaining why to watch"}}]
 
+IMPORTANT: The "reason" field is MANDATORY for every single match — including regular ones. Never leave it empty or null. Even for a regular match write something brief like "משחק ליגה סטנדרטי" or mention the teams.
+
 No text outside the JSON array."""
 
     try:
