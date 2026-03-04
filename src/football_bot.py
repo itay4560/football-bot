@@ -101,7 +101,7 @@ STRICT RULES — follow exactly:
 hot = ONLY if one of these is true:
   1. Derby match between city rivals (e.g. El Clasico, Manchester derby, Rome derby)
   2. Quarter-final, semi-final, or final of any cup competition
-  3. Both teams are currently in the top 3 of their league
+  3. Both teams are currently in the top 3 of their league (top 6 vs top 6 is NOT enough)
 
 interesting = ONLY if one of these is true:
   1. At least one team is currently in the top 6 of their league
