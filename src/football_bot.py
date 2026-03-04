@@ -7,35 +7,17 @@ from datetime import date, datetime, timedelta
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID = os.environ.get("CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "").strip()
 
-COMPETITIONS = "PL,PD,CL,BL1,SA,FL1,DED,PPL,EL,ECL"
-
-COUNTRY_MAP = {
-    "England":     ("אנגליה",    "🏴󠁧󠁢󠁥󠁮󠁧󠁿"),
-    "Spain":       ("ספרד",      "🇪🇸"),
-    "Germany":     ("גרמניה",    "🇩🇪"),
-    "Italy":       ("איטליה",    "🇮🇹"),
-    "France":      ("צרפת",      "🇫🇷"),
-    "Netherlands": ("הולנד",     "🇳🇱"),
-    "Portugal":    ("פורטוגל",   "🇵🇹"),
-    "Europe":      ("אירופה",    "🌍"),
-    "World":       ("אירופה",    "🌍"),
-}
-
-STAGE_MAP = {
-    "GROUP_STAGE":              "שלב הבתים",
-    "ROUND_OF_16":              "שמינית גמר",
-    "LAST_16":                  "שמינית גמר",
-    "QUARTER_FINALS":           "רבע גמר",
-    "SEMI_FINALS":              "חצי גמר",
-    "FINAL":                    "גמר",
-    "KNOCKOUT_PHASE_PLAY_OFFS": "פלייאוף",
-    "PLAYOFF_ROUND_ONE":        "פלייאוף",
-    "PLAYOFF_ROUND_TWO":        "פלייאוף",
-}
-
-SKIP_STATUSES = {"POSTPONED", "SUSPENDED", "CANCELLED"}
+FEEDS = [
+    {"url": "https://fixturedownload.com/feed/json/epl-2025",                      "league": "Premier League",        "country": "אנגליה",   "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
+    {"url": "https://fixturedownload.com/feed/json/esp-primera-division-2025",     "league": "La Liga",               "country": "ספרד",     "flag": "🇪🇸"},
+    {"url": "https://fixturedownload.com/feed/json/uefa-champions-league-2025",    "league": "Champions League",      "country": "אירופה",   "flag": "🌍"},
+    {"url": "https://fixturedownload.com/feed/json/bundesliga-2025",               "league": "Bundesliga",            "country": "גרמניה",   "flag": "🇩🇪"},
+    {"url": "https://fixturedownload.com/feed/json/serie-a-2025",                  "league": "Serie A",               "country": "איטליה",   "flag": "🇮🇹"},
+    {"url": "https://fixturedownload.com/feed/json/ligue-1-2025",                  "league": "Ligue 1",               "country": "צרפת",     "flag": "🇫🇷"},
+    {"url": "https://fixturedownload.com/feed/json/brasileiro-serie-a-2025",       "league": "Brasileirão Serie A",   "country": "ברזיל",    "flag": "🇧🇷"},
+    {"url": "https://fixturedownload.com/feed/json/primera-division-argentina-2025","league": "Primera División",     "country": "ארגנטינה", "flag": "🇦🇷"},
+]
 
 
 def send_telegram(message):
@@ -49,68 +31,50 @@ def send_telegram(message):
         print(f"שגיאה בשליחה: {e}")
 
 
-def fetch_fixtures():
+def fetch_all_fixtures():
     today_str = date.today().strftime("%Y-%m-%d")
-    key_preview = FOOTBALL_API_KEY[:5] if FOOTBALL_API_KEY else "NOT SET"
-    print(f"FOOTBALL_API_KEY starts with: {key_preview}")
     print(f"Fetching fixtures for {today_str}...")
-    try:
-        response = requests.get(
-            "https://api.football-data.org/v4/matches",
-            headers={"X-Auth-Token": FOOTBALL_API_KEY},
-            params={"dateFrom": today_str, "dateTo": today_str},
-            timeout=15,
-        )
-        print(f"Status: {response.status_code}")
-        print(f"Full response:\n{response.text}")
-        response.raise_for_status()
-        matches = response.json().get("matches", [])
-        print(f"Found {len(matches)} fixtures")
-        return matches
-    except Exception as e:
-        print(f"Error fetching fixtures: {e}")
-        return []
+    all_fixtures = []
 
-
-def parse_fixtures(raw):
-    fixtures = []
-    for m in raw:
-        if m.get("status") in SKIP_STATUSES:
-            continue
-
-        home = m.get("homeTeam", {}).get("shortName") or m.get("homeTeam", {}).get("name", "?")
-        away = m.get("awayTeam", {}).get("shortName") or m.get("awayTeam", {}).get("name", "?")
-        competition = m.get("competition", {}).get("name", "")
-        area_name = m.get("area", {}).get("name", "Europe")
-        stage = m.get("stage", "REGULAR_SEASON")
-        matchday = m.get("matchday")
-
-        stage_str = STAGE_MAP.get(stage, "")
-        if not stage_str and matchday:
-            stage_str = f"מחזור {matchday}"
-
-        utc_date = m.get("utcDate", "")
+    for feed in FEEDS:
         try:
-            utc_dt = datetime.fromisoformat(utc_date.replace("Z", "+00:00"))
-            time_str = (utc_dt + timedelta(hours=2)).strftime("%H:%M")
-        except Exception:
-            time_str = "?"
+            response = requests.get(feed["url"], timeout=10)
+            response.raise_for_status()
+            matches = response.json()
 
-        country, flag = COUNTRY_MAP.get(area_name, ("אירופה", "🌍"))
+            for m in matches:
+                date_utc = m.get("DateUtc", "")
+                if not date_utc.startswith(today_str):
+                    continue
 
-        fixtures.append({
-            "home": home,
-            "away": away,
-            "time": time_str,
-            "league": competition,
-            "stage": stage_str,
-            "stadium": "",
-            "city": "",
-            "country": country,
-            "flag": flag,
-        })
+                try:
+                    utc_dt = datetime.strptime(date_utc, "%Y-%m-%d %H:%M:%SZ")
+                    time_str = (utc_dt + timedelta(hours=2)).strftime("%H:%M")
+                except Exception:
+                    time_str = "?"
 
-    return fixtures
+                round_number = m.get("RoundNumber", "")
+                stage_str = f"מחזור {round_number}" if round_number else ""
+
+                all_fixtures.append({
+                    "home": m.get("HomeTeam", "?"),
+                    "away": m.get("AwayTeam", "?"),
+                    "time": time_str,
+                    "league": feed["league"],
+                    "stage": stage_str,
+                    "stadium": m.get("Location", ""),
+                    "city": "",
+                    "country": feed["country"],
+                    "flag": feed["flag"],
+                })
+
+            print(f"{feed['league']}: found {sum(1 for m in matches if m.get('DateUtc','').startswith(today_str))} matches")
+
+        except Exception as e:
+            print(f"Error fetching {feed['league']}: {e}")
+
+    print(f"Total fixtures: {len(all_fixtures)}")
+    return all_fixtures
 
 
 def analyze_with_claude(fixtures):
@@ -212,8 +176,7 @@ def format_match(match):
 
 def send_daily_matches():
     print(f"Starting football bot for {date.today()}...")
-    raw = fetch_fixtures()
-    fixtures = parse_fixtures(raw)
+    fixtures = fetch_all_fixtures()
 
     if not fixtures:
         send_telegram("לא נמצאו משחקים מעניינים היום 😴")
