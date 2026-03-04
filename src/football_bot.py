@@ -151,7 +151,6 @@ No text outside the JSON array."""
             if block.get("type") == "text":
                 text += block.get("text", "")
 
-        print(f"Claude raw response:\n{text}")
         text = text.strip()
         if "```" in text:
             start = text.find("[")
@@ -160,6 +159,7 @@ No text outside the JSON array."""
 
         rankings = json.loads(text)
         print(f"Claude ranked {len(rankings)} matches")
+        print(f"First item reason field: {rankings[0].get('reason', 'MISSING') if rankings else 'NO RANKINGS'}")
 
         for i, fixture in enumerate(fixtures):
             if i < len(rankings):
