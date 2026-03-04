@@ -51,6 +51,8 @@ def send_telegram(message):
 
 def fetch_fixtures():
     today_str = date.today().strftime("%Y-%m-%d")
+    key_preview = FOOTBALL_API_KEY[:5] if FOOTBALL_API_KEY else "NOT SET"
+    print(f"FOOTBALL_API_KEY starts with: {key_preview}")
     print(f"Fetching fixtures for {today_str}...")
     try:
         response = requests.get(
