@@ -59,6 +59,8 @@ def fetch_fixtures():
             params={"dateFrom": today_str, "dateTo": today_str, "competitions": COMPETITIONS},
             timeout=15,
         )
+        print(f"Status: {response.status_code}")
+        print(f"Response (first 500 chars): {response.text[:500]}")
         response.raise_for_status()
         matches = response.json().get("matches", [])
         print(f"Found {len(matches)} fixtures")
