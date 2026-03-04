@@ -1,6 +1,7 @@
 import requests
 import os
 import json
+import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
@@ -129,54 +130,60 @@ IMPORTANT: The "reason" field is MANDATORY for every single match — including 
 
 No text outside the JSON array."""
 
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 2000,
-                "messages": [{"role": "user", "content": prompt}],
-            },
-            timeout=60,
-        )
-        response.raise_for_status()
+    for attempt in range(1, 4):
+        try:
+            response = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 2000,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=60,
+            )
+            if response.status_code == 529:
+                print(f"Claude 529 overloaded (attempt {attempt}/3), retrying in 10s...")
+                time.sleep(10)
+                continue
+            response.raise_for_status()
 
-        text = ""
-        for block in response.json()["content"]:
-            if block.get("type") == "text":
-                text += block.get("text", "")
+            text = ""
+            for block in response.json()["content"]:
+                if block.get("type") == "text":
+                    text += block.get("text", "")
 
-        text = text.strip()
-        if "```" in text:
-            start = text.find("[")
-            end = text.rfind("]") + 1
-            text = text[start:end]
+            text = text.strip()
+            if "```" in text:
+                start = text.find("[")
+                end = text.rfind("]") + 1
+                text = text[start:end]
 
-        rankings = json.loads(text)
-        print(f"Claude ranked {len(rankings)} matches")
-        print(f"First item reason field: {rankings[0].get('reason', 'MISSING') if rankings else 'NO RANKINGS'}")
+            rankings = json.loads(text)
+            print(f"Claude ranked {len(rankings)} matches")
+            print(f"First item reason field: {rankings[0].get('reason', 'MISSING') if rankings else 'NO RANKINGS'}")
 
-        for i, fixture in enumerate(fixtures):
-            if i < len(rankings):
-                fixture["importance"] = rankings[i].get("importance", "regular")
-                fixture["reason"] = rankings[i].get("reason", "")
-            else:
-                fixture["importance"] = "regular"
-                fixture["reason"] = ""
+            for i, fixture in enumerate(fixtures):
+                if i < len(rankings):
+                    fixture["importance"] = rankings[i].get("importance", "regular")
+                    fixture["reason"] = rankings[i].get("reason", "")
+                else:
+                    fixture["importance"] = "regular"
+                    fixture["reason"] = ""
 
-        return fixtures
+            return fixtures
 
-    except Exception as e:
-        print(f"Claude error: {type(e).__name__}: {e}")
-        for f in fixtures:
-            f.setdefault("importance", "regular")
-            f.setdefault("reason", "")
-        return fixtures
+        except Exception as e:
+            print(f"Claude error (attempt {attempt}/3): {type(e).__name__}: {e}")
+
+    for f in fixtures:
+        f.setdefault("importance", "regular")
+        f.setdefault("reason", "")
+    return fixtures
 
 
 def format_match(match):
