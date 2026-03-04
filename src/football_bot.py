@@ -13,6 +13,14 @@ CUP_LEAGUES = {
     "Champions League", "Europa League", "Conference League", "Copa del Rey",
 }
 
+ESPN_STANDINGS_URLS = {
+    "Premier League": "https://site.api.espn.com/apis/v2/sports/soccer/eng.1/standings",
+    "La Liga":        "https://site.api.espn.com/apis/v2/sports/soccer/esp.1/standings",
+    "Serie A":        "https://site.api.espn.com/apis/v2/sports/soccer/ita.1/standings",
+    "Bundesliga":     "https://site.api.espn.com/apis/v2/sports/soccer/ger.1/standings",
+    "Ligue 1":        "https://site.api.espn.com/apis/v2/sports/soccer/fra.1/standings",
+}
+
 FEEDS = [
     {"url": "https://fixturedownload.com/feed/json/epl-2025",                      "league": "Premier League",        "country": "אנגליה",   "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     {"url": "https://fixturedownload.com/feed/json/bundesliga-2025",               "league": "Bundesliga",            "country": "גרמניה",   "flag": "🇩🇪"},
@@ -25,6 +33,23 @@ FEEDS = [
     {"url": "https://fixturedownload.com/feed/json/super-lig-2025",                "league": "Süper Lig",             "country": "טורקיה",   "flag": "🇹🇷"},
     {"url": "https://fixturedownload.com/feed/json/primeira-liga-2025",            "league": "Primeira Liga",         "country": "פורטוגל",  "flag": "🇵🇹"},
 ]
+
+
+def fetch_standings():
+    standings = {}
+    for league, url in ESPN_STANDINGS_URLS.items():
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            entries = data["children"][0]["standings"]["entries"]
+            top6 = [e["team"]["displayName"] for e in entries[:6]]
+            standings[league] = top6
+            print(f"Standings {league}: {top6}")
+        except Exception as e:
+            print(f"Standings fetch failed for {league}: {e}")
+            standings[league] = []
+    return standings
 
 
 def send_telegram(message):
@@ -92,6 +117,14 @@ def analyze_with_claude(fixtures):
         for f in fixtures
     ]
 
+    standings = fetch_standings()
+    standings_lines = [
+        f"  {league}: {', '.join(teams)}"
+        for league, teams in standings.items()
+        if teams
+    ]
+    standings_text = "\n".join(standings_lines) if standings_lines else "  (standings unavailable)"
+
     prompt = f"""You are a football expert. Analyze these fixtures and classify each one strictly.
 
 STRICT RULES — follow exactly:
@@ -110,15 +143,7 @@ regular = everything else
 IMPORTANT: Do NOT give "hot" to a regular league match just because the teams are well-known. Fame alone is not enough.
 
 Current top 6 standings per league (use this to apply the rules above):
-  Premier League: Liverpool, Arsenal, Chelsea, Nottingham Forest, Newcastle, Man City
-  La Liga: Barcelona, Real Madrid, Atletico Madrid, Athletic Club, Villarreal, Real Sociedad
-  Bundesliga: Bayern Munich, Bayer Leverkusen, Eintracht Frankfurt, RB Leipzig, Borussia Dortmund, Freiburg
-  Serie A: Napoli, Inter Milan, Atalanta, Juventus, Lazio, AC Milan
-  Ligue 1: PSG, Monaco, Marseille, Lille, Nice, Lens
-  Brasileirão Serie A: Flamengo, Palmeiras, Atletico Mineiro, Botafogo, Fluminense, Gremio
-  Primera División: Racing Club, River Plate, Boca Juniors, San Lorenzo, Independiente, Huracan
-  Süper Lig: Galatasaray, Fenerbahce, Besiktas, Trabzonspor, Basaksehir, Sivasspor
-  Primeira Liga: Benfica, Porto, Sporting CP, Braga, Guimaraes, Vitoria
+{standings_text}
 
 Fixtures:
 {json.dumps(slim, ensure_ascii=False)}
