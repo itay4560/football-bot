@@ -56,7 +56,7 @@ def fetch_fixtures():
         response = requests.get(
             "https://api.football-data.org/v4/matches",
             headers={"X-Auth-Token": FOOTBALL_API_KEY},
-            params={"dateFrom": today_str, "dateTo": today_str, "competitions": COMPETITIONS},
+            params={"dateFrom": today_str, "dateTo": today_str},
             timeout=15,
         )
         print(f"Status: {response.status_code}")
