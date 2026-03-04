@@ -1,6 +1,7 @@
 import requests
 import os
 import json
+from collections import defaultdict
 from datetime import datetime, date
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
@@ -30,6 +31,7 @@ def get_matches_from_claude():
 חפש ברשת את כל משחקי הכדורגל החשובים שמתקיימים היום {today_search}.
 
 לאחר החיפוש, בחר את המשחקים הכי מעניינים ומדוברים - דרבים, ליגת אלופות, גביעים, קבוצות גדולות, משחקים מכריעים.
+החזר לפחות 3 משחקים גם אם אין משחקים חמים במיוחד.
 
 החזר JSON בלבד בפורמט הזה:
 [
@@ -38,8 +40,11 @@ def get_matches_from_claude():
     "away": "שם קבוצת חוץ בעברית או אנגלית",
     "time": "HH:MM",
     "league": "שם הליגה בעברית",
+    "stage": "שלב או מחזור - למשל: מחזור 28, שמינית גמר, גמר",
     "stadium": "שם האצטדיון",
     "city": "עיר",
+    "country": "שם המדינה בעברית",
+    "flag": "אמוג'י דגל המדינה",
     "reason": "משפט קצר בעברית למה כדאי לצפות",
     "importance": "hot/interesting/regular"
   }}
@@ -102,23 +107,24 @@ def format_match(match):
     away = match.get("away", "?")
     time_str = match.get("time", "?")
     league = match.get("league", "")
+    stage = match.get("stage", "")
     stadium = match.get("stadium", "")
     city = match.get("city", "")
     reason = match.get("reason", "")
+    importance = match.get("importance", "regular")
+
+    icon = "🔥" if importance == "hot" else "⭐"
+    meta = " | ".join(p for p in [league, stage, time_str] if p)
 
     lines = [
-        "",
-        f"<b>{home} 🆚 {away}</b>",
-        f"🕐 {time_str} (ישראל)",
-        f"🏆 {league}",
+        icon,
+        f"{home} ✦ {away}",
+        meta,
     ]
-    if stadium:
-        loc = f"{stadium}"
-        if city:
-            loc += f", {city}"
-        lines.append(f"🏟 {loc}")
+    if stadium or city:
+        lines.append(f"📍 {', '.join(p for p in [stadium, city] if p)}")
     if reason:
-        lines.append(f"💡 {reason}")
+        lines.append(f"◈ {reason}")
 
     return "\n".join(lines)
 
@@ -131,29 +137,26 @@ def send_daily_matches():
         send_telegram("לא נמצאו משחקים מעניינים היום 😴")
         return
 
-    hot = [m for m in matches if m.get("importance") == "hot"]
-    interesting = [m for m in matches if m.get("importance") == "interesting"]
-    regular = [m for m in matches if m.get("importance") == "regular"]
+    order = {"hot": 0, "interesting": 1, "regular": 2}
+    matches.sort(key=lambda m: order.get(m.get("importance", "regular"), 2))
+
+    by_country = defaultdict(list)
+    for m in matches:
+        key = (m.get("flag", "🌍"), m.get("country", "אחר"))
+        by_country[key].append(m)
 
     today_str = date.today().strftime("%d/%m/%Y")
-    parts = [f"<b>⚽ משחקי כדורגל היום - {today_str}</b>"]
+    parts = [
+        "╔═══════════════════════════╗",
+        f"⚽ משחקי היום • {today_str}",
+        "╚═══════════════════════════╝",
+    ]
 
-    if hot:
-        parts.append(f"\n🔥 <b>חייב לראות ({len(hot)}):</b>")
-        parts.append("━━━━━━━━━━━━━━━")
-        for m in hot:
-            parts.append(format_match(m))
-
-    if interesting:
-        parts.append(f"\n⭐ <b>מעניין ({len(interesting)}):</b>")
-        parts.append("━━━━━━━━━━━━━━━")
-        for m in interesting:
-            parts.append(format_match(m))
-
-    if regular:
-        parts.append(f"\n📋 <b>שאר המשחקים ({len(regular)}):</b>")
-        parts.append("━━━━━━━━━━━━━━━")
-        for m in regular[:5]:
+    for (flag, country), country_matches in by_country.items():
+        parts.append(f"\n{flag} {country}")
+        parts.append("──────────────────────────")
+        for m in country_matches:
+            parts.append("")
             parts.append(format_match(m))
 
     send_telegram("\n".join(parts))
