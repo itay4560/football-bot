@@ -94,13 +94,22 @@ def analyze_with_claude(fixtures):
         for f in fixtures
     ]
 
-    prompt = f"""You are a football expert. Analyze these fixtures and classify each one.
+    prompt = f"""You are a football expert. Analyze these fixtures and classify each one strictly.
 
-hot = derbies, CL/EL knockouts, title deciders, top-of-table clashes between big clubs
-interesting = big clubs, cup matches, notable games
-regular = other matches
+STRICT RULES — follow exactly:
 
-Always classify at least 3 matches as hot or interesting combined if there are enough matches.
+hot = ONLY if one of these is true:
+  1. Derby match between city rivals (e.g. El Clasico, Manchester derby, Rome derby)
+  2. Quarter-final, semi-final, or final of any cup competition
+  3. Both teams are currently in the top 3 of their league
+
+interesting = ONLY if one of these is true:
+  1. At least one team is currently in the top 6 of their league
+  2. Round of 16 in a cup competition
+
+regular = everything else
+
+IMPORTANT: Do NOT give "hot" to a regular league match just because the teams are well-known. Fame alone is not enough.
 
 Fixtures:
 {json.dumps(slim, ensure_ascii=False)}
