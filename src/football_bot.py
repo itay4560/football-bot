@@ -153,6 +153,8 @@ Return ONLY a JSON array with one object per fixture in the exact same order:
 
 IMPORTANT: The "reason" field is MANDATORY for every single match — including regular ones. Never leave it empty or null. Even for a regular match write something brief like "משחק ליגה סטנדרטי" or mention the teams.
 
+IMPORTANT: Always use the original English team names in the "reason" field. Do NOT translate or transliterate team names into Hebrew. Only the explanation text should be in Hebrew.
+
 No text outside the JSON array."""
 
     for attempt in range(1, 4):
