@@ -17,6 +17,13 @@ FEEDS = [
     {"url": "https://fixturedownload.com/feed/json/ligue-1-2025",                  "league": "Ligue 1",               "country": "צרפת",     "flag": "🇫🇷"},
     {"url": "https://fixturedownload.com/feed/json/brasileiro-serie-a-2025",       "league": "Brasileirão Serie A",   "country": "ברזיל",    "flag": "🇧🇷"},
     {"url": "https://fixturedownload.com/feed/json/primera-division-argentina-2025","league": "Primera División",     "country": "ארגנטינה", "flag": "🇦🇷"},
+    {"url": "https://fixturedownload.com/feed/json/la-liga-2025",                  "league": "La Liga",               "country": "ספרד",     "flag": "🇪🇸"},
+    {"url": "https://fixturedownload.com/feed/json/champions-league-2025",         "league": "Champions League",      "country": "אירופה",   "flag": "🌍"},
+    {"url": "https://fixturedownload.com/feed/json/europa-league-2025",            "league": "Europa League",         "country": "אירופה",   "flag": "🌍"},
+    {"url": "https://fixturedownload.com/feed/json/conference-league-2025",        "league": "Conference League",     "country": "אירופה",   "flag": "🌍"},
+    {"url": "https://fixturedownload.com/feed/json/super-lig-2025",                "league": "Süper Lig",             "country": "טורקיה",   "flag": "🇹🇷"},
+    {"url": "https://fixturedownload.com/feed/json/primeira-liga-2025",            "league": "Primeira Liga",         "country": "פורטוגל",  "flag": "🇵🇹"},
+    {"url": "https://fixturedownload.com/feed/json/copa-del-rey-2025",             "league": "Copa del Rey",          "country": "ספרד",     "flag": "🇪🇸"},
 ]
 
 
