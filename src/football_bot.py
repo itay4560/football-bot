@@ -8,6 +8,11 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID = os.environ.get("CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
+CUP_LEAGUES = {
+    "Champions League", "Europa League", "Conference League",
+    "Copa del Rey", "Copa Libertadores", "FA Cup", "Coppa Italia",
+}
+
 FEEDS = [
     {"url": "https://fixturedownload.com/feed/json/epl-2025",                      "league": "Premier League",        "country": "אנגליה",   "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
     {"url": "https://fixturedownload.com/feed/json/esp-primera-division-2025",     "league": "La Liga",               "country": "ספרד",     "flag": "🇪🇸"},
@@ -207,11 +212,22 @@ def send_daily_matches():
     ]
 
     for (flag, country), country_matches in by_country.items():
+        league_matches = [m for m in country_matches if m.get("league") not in CUP_LEAGUES]
+        cup_matches = [m for m in country_matches if m.get("league") in CUP_LEAGUES]
+
         parts.append(f"\n{flag} {country}")
         parts.append("──────────────────────────")
-        for m in country_matches:
+
+        for m in league_matches:
             parts.append("")
             parts.append(format_match(m))
+
+        if cup_matches:
+            if league_matches:
+                parts.append("\n🏆 גביע:")
+            for m in cup_matches:
+                parts.append("")
+                parts.append(format_match(m))
 
     send_telegram("\n".join(parts))
 
