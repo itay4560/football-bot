@@ -15,8 +15,6 @@ CUP_LEAGUES = {
 
 FEEDS = [
     {"url": "https://fixturedownload.com/feed/json/epl-2025",                      "league": "Premier League",        "country": "אנגליה",   "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},
-    {"url": "https://fixturedownload.com/feed/json/esp-primera-division-2025",     "league": "La Liga",               "country": "ספרד",     "flag": "🇪🇸"},
-    {"url": "https://fixturedownload.com/feed/json/uefa-champions-league-2025",    "league": "Champions League",      "country": "אירופה",   "flag": "🌍"},
     {"url": "https://fixturedownload.com/feed/json/bundesliga-2025",               "league": "Bundesliga",            "country": "גרמניה",   "flag": "🇩🇪"},
     {"url": "https://fixturedownload.com/feed/json/serie-a-2025",                  "league": "Serie A",               "country": "איטליה",   "flag": "🇮🇹"},
     {"url": "https://fixturedownload.com/feed/json/ligue-1-2025",                  "league": "Ligue 1",               "country": "צרפת",     "flag": "🇫🇷"},
@@ -75,7 +73,6 @@ def fetch_all_fixtures():
                     "league": feed["league"],
                     "stage": stage_str,
                     "stadium": m.get("Location", ""),
-                    "city": "",
                     "country": feed["country"],
                     "flag": feed["flag"],
                 })
@@ -170,7 +167,6 @@ def format_match(match):
     league = match.get("league", "")
     stage = match.get("stage", "")
     stadium = match.get("stadium", "")
-    city = match.get("city", "")
     reason = match.get("reason", "")
     importance = match.get("importance", "regular")
 
@@ -178,8 +174,8 @@ def format_match(match):
     meta = " | ".join(p for p in [league, stage, time_str] if p)
 
     lines = [icon, f"{home} ✦ {away}", meta]
-    if stadium or city:
-        lines.append(f"📍 {', '.join(p for p in [stadium, city] if p)}")
+    if stadium:
+        lines.append(f"📍 {stadium}")
     if reason:
         lines.append(f"◈ {reason}")
 
