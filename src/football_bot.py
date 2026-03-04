@@ -85,7 +85,29 @@ def fetch_all_fixtures():
     return all_fixtures
 
 
-def analyze_with_claude(fixtures):
+def fetch_standings():
+    standings = {}
+    for feed in FEEDS:
+        if feed["league"] in CUP_LEAGUES:
+            continue
+        slug = feed["url"].split("/feed/json/")[1]
+        url = f"https://fixturedownload.com/feed/json/{slug}/standings"
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            if data and "Position" in data[0]:
+                data.sort(key=lambda x: x.get("Position", 99))
+            top6 = [row["TeamName"] for row in data[:6] if row.get("TeamName")]
+            if top6:
+                standings[feed["league"]] = top6
+                print(f"Standings {feed['league']}: top6 = {top6}")
+        except Exception as e:
+            print(f"Error fetching standings for {feed['league']}: {e}")
+    return standings
+
+
+def analyze_with_claude(fixtures, standings):
     if not fixtures:
         return []
 
@@ -110,6 +132,9 @@ interesting = ONLY if one of these is true:
 regular = everything else
 
 IMPORTANT: Do NOT give "hot" to a regular league match just because the teams are well-known. Fame alone is not enough.
+
+Current top 6 standings per league (use this to apply the rules above):
+{chr(10).join(f"  {league}: {', '.join(teams)}" for league, teams in standings.items()) if standings else "  (standings unavailable)"}
 
 Fixtures:
 {json.dumps(slim, ensure_ascii=False)}
@@ -198,7 +223,8 @@ def send_daily_matches():
         send_telegram("לא נמצאו משחקים מעניינים היום 😴")
         return
 
-    analyzed = analyze_with_claude(fixtures)
+    standings = fetch_standings()
+    analyzed = analyze_with_claude(fixtures, standings)
 
     order = {"hot": 0, "interesting": 1, "regular": 2}
     analyzed.sort(key=lambda m: order.get(m.get("importance", "regular"), 2))
