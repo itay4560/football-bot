@@ -1,40 +1,41 @@
 import requests
 import os
 import json
-import time
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 CHAT_ID = os.environ.get("CHAT_ID", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY", "")
+FOOTBALL_API_KEY = os.environ.get("FOOTBALL_API_KEY", "")
 
-LEAGUES = [
-    {"id": 2,   "country": "אירופה",       "flag": "🌍"},   # Champions League
-    {"id": 39,  "country": "אנגליה",       "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},  # Premier League
-    {"id": 45,  "country": "אנגליה",       "flag": "🏴󠁧󠁢󠁥󠁮󠁧󠁿"},  # FA Cup
-    {"id": 61,  "country": "צרפת",         "flag": "🇫🇷"},  # Ligue 1
-    {"id": 71,  "country": "ברזיל",        "flag": "🇧🇷"},  # Brazilian Serie A
-    {"id": 78,  "country": "גרמניה",       "flag": "🇩🇪"},  # Bundesliga
-    {"id": 88,  "country": "הולנד",        "flag": "🇳🇱"},  # Eredivisie
-    {"id": 13,  "country": "דרום אמריקה",  "flag": "🌎"},   # Copa Libertadores
-    {"id": 128, "country": "ארגנטינה",     "flag": "🇦🇷"},  # Argentine Primera
-    {"id": 135, "country": "איטליה",       "flag": "🇮🇹"},  # Serie A
-    {"id": 137, "country": "איטליה",       "flag": "🇮🇹"},  # Coppa Italia
-    {"id": 140, "country": "ספרד",         "flag": "🇪🇸"},  # La Liga
-    {"id": 143, "country": "ספרד",         "flag": "🇪🇸"},  # Copa del Rey
-    {"id": 203, "country": "טורקיה",       "flag": "🇹🇷"},  # Turkish Super Lig
-]
+COMPETITIONS = "PL,PD,CL,BL1,SA,FL1,DED,PPL,EL,ECL"
 
-SOUTH_AMERICAN_LEAGUES = {13, 71, 128}
+COUNTRY_MAP = {
+    "England":     ("אנגליה",    "🏴󠁧󠁢󠁥󠁮󠁧󠁿"),
+    "Spain":       ("ספרד",      "🇪🇸"),
+    "Germany":     ("גרמניה",    "🇩🇪"),
+    "Italy":       ("איטליה",    "🇮🇹"),
+    "France":      ("צרפת",      "🇫🇷"),
+    "Netherlands": ("הולנד",     "🇳🇱"),
+    "Portugal":    ("פורטוגל",   "🇵🇹"),
+    "Europe":      ("אירופה",    "🌍"),
+    "World":       ("אירופה",    "🌍"),
+}
 
+STAGE_MAP = {
+    "GROUP_STAGE":              "שלב הבתים",
+    "ROUND_OF_16":              "שמינית גמר",
+    "LAST_16":                  "שמינית גמר",
+    "QUARTER_FINALS":           "רבע גמר",
+    "SEMI_FINALS":              "חצי גמר",
+    "FINAL":                    "גמר",
+    "KNOCKOUT_PHASE_PLAY_OFFS": "פלייאוף",
+    "PLAYOFF_ROUND_ONE":        "פלייאוף",
+    "PLAYOFF_ROUND_TWO":        "פלייאוף",
+}
 
-def get_season(league_id):
-    today = date.today()
-    if league_id in SOUTH_AMERICAN_LEAGUES:
-        return today.year
-    return today.year if today.month >= 7 else today.year - 1
+SKIP_STATUSES = {"POSTPONED", "SUSPENDED", "CANCELLED"}
 
 
 def send_telegram(message):
@@ -48,62 +49,64 @@ def send_telegram(message):
         print(f"שגיאה בשליחה: {e}")
 
 
-def fetch_all_fixtures():
+def fetch_fixtures():
     today_str = date.today().strftime("%Y-%m-%d")
-    all_fixtures = []
+    print(f"Fetching fixtures for {today_str}...")
+    try:
+        response = requests.get(
+            "https://api.football-data.org/v4/matches",
+            headers={"X-Auth-Token": FOOTBALL_API_KEY},
+            params={"dateFrom": today_str, "dateTo": today_str, "competitions": COMPETITIONS},
+            timeout=15,
+        )
+        response.raise_for_status()
+        matches = response.json().get("matches", [])
+        print(f"Found {len(matches)} fixtures")
+        return matches
+    except Exception as e:
+        print(f"Error fetching fixtures: {e}")
+        return []
 
-    for league in LEAGUES:
-        season = get_season(league["id"])
-        print(f"Fetching league {league['id']} (season {season})...")
+
+def parse_fixtures(raw):
+    fixtures = []
+    for m in raw:
+        if m.get("status") in SKIP_STATUSES:
+            continue
+
+        home = m.get("homeTeam", {}).get("shortName") or m.get("homeTeam", {}).get("name", "?")
+        away = m.get("awayTeam", {}).get("shortName") or m.get("awayTeam", {}).get("name", "?")
+        competition = m.get("competition", {}).get("name", "")
+        area_name = m.get("area", {}).get("name", "Europe")
+        stage = m.get("stage", "REGULAR_SEASON")
+        matchday = m.get("matchday")
+
+        stage_str = STAGE_MAP.get(stage, "")
+        if not stage_str and matchday:
+            stage_str = f"מחזור {matchday}"
+
+        utc_date = m.get("utcDate", "")
         try:
-            response = requests.get(
-                "https://v3.football.api-sports.io/fixtures",
-                headers={"x-apisports-key": API_FOOTBALL_KEY},
-                params={
-                    "league": league["id"],
-                    "season": season,
-                    "date": today_str,
-                    "timezone": "Asia/Jerusalem",
-                },
-                timeout=10,
-            )
-            response.raise_for_status()
-            data = response.json()
+            utc_dt = datetime.fromisoformat(utc_date.replace("Z", "+00:00"))
+            time_str = (utc_dt + timedelta(hours=2)).strftime("%H:%M")
+        except Exception:
+            time_str = "?"
 
-            if data.get("errors"):
-                print(f"API error for league {league['id']}: {data['errors']}")
-                continue
+        country, flag = COUNTRY_MAP.get(area_name, ("אירופה", "🌍"))
 
-            for item in data.get("response", []):
-                f = item.get("fixture", {})
-                venue = f.get("venue") or {}
-                teams = item.get("teams", {})
-                lg = item.get("league", {})
+        fixtures.append({
+            "home": home,
+            "away": away,
+            "time": time_str,
+            "league": competition,
+            "stage": stage_str,
+            "stadium": "",
+            "city": "",
+            "country": country,
+            "flag": flag,
+        })
 
-                try:
-                    time_str = datetime.fromisoformat(f.get("date", "")).strftime("%H:%M")
-                except Exception:
-                    time_str = "?"
-
-                all_fixtures.append({
-                    "home": teams.get("home", {}).get("name", "?"),
-                    "away": teams.get("away", {}).get("name", "?"),
-                    "time": time_str,
-                    "league": lg.get("name", ""),
-                    "round": lg.get("round", ""),
-                    "stadium": venue.get("name", ""),
-                    "city": venue.get("city", ""),
-                    "country": league["country"],
-                    "flag": league["flag"],
-                })
-
-        except Exception as e:
-            print(f"Error fetching league {league['id']}: {e}")
-
-        time.sleep(1)
-
-    print(f"Total fixtures found: {len(all_fixtures)}")
-    return all_fixtures
+    return fixtures
 
 
 def analyze_with_claude(fixtures):
@@ -111,15 +114,17 @@ def analyze_with_claude(fixtures):
         return []
 
     slim = [
-        {"home": f["home"], "away": f["away"], "league": f["league"], "round": f["round"]}
+        {"home": f["home"], "away": f["away"], "league": f["league"], "stage": f["stage"]}
         for f in fixtures
     ]
 
     prompt = f"""You are a football expert. Analyze these fixtures and classify each one.
 
-hot = derbies, CL/Europa knockouts, title deciders, top-of-table clashes between big clubs
+hot = derbies, CL/EL knockouts, title deciders, top-of-table clashes between big clubs
 interesting = big clubs, cup matches, notable games
 regular = other matches
+
+Always classify at least 3 matches as hot or interesting combined if there are enough matches.
 
 Fixtures:
 {json.dumps(slim, ensure_ascii=False)}
@@ -183,14 +188,14 @@ def format_match(match):
     away = match.get("away", "?")
     time_str = match.get("time", "?")
     league = match.get("league", "")
-    round_str = match.get("round", "")
+    stage = match.get("stage", "")
     stadium = match.get("stadium", "")
     city = match.get("city", "")
     reason = match.get("reason", "")
     importance = match.get("importance", "regular")
 
     icon = "🔥" if importance == "hot" else "⭐"
-    meta = " | ".join(p for p in [league, round_str, time_str] if p)
+    meta = " | ".join(p for p in [league, stage, time_str] if p)
 
     lines = [icon, f"{home} ✦ {away}", meta]
     if stadium or city:
@@ -203,7 +208,8 @@ def format_match(match):
 
 def send_daily_matches():
     print(f"Starting football bot for {date.today()}...")
-    fixtures = fetch_all_fixtures()
+    raw = fetch_fixtures()
+    fixtures = parse_fixtures(raw)
 
     if not fixtures:
         send_telegram("לא נמצאו משחקים מעניינים היום 😴")
