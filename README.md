@@ -4,7 +4,7 @@ A Telegram bot that sends a daily summary of the most interesting football match
 
 ## How It Works
 
-Every day at 06:00 UTC, the bot:
+Every day at 08:30 UTC, the bot:
 1. Searches the web for today's football matches
 2. Categorizes them as:
    - 🔥 **Hot** - Derbies, Champions League knockouts
